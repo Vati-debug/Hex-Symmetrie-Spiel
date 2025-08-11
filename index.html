@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Symmetry Game</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #222;
+    color: #fff;
+    text-align: center;
+  }
+  canvas {
+    border: 2px solid #fff;
+    background: #000;
+    display: block;
+    margin: auto;
+  }
+  button {
+    padding: 10px 20px;
+    margin: 10px;
+    font-size: 16px;
+  }
+  #highscores {
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+<h1>Symmetry Game</h1>
+<canvas id="gameCanvas" width="300" height="300"></canvas><br>
+<button id="checkBtn">Lösung prüfen</button>
+<div id="timer">Zeit: 0s</div>
+<div id="highscores">
+  <h2>Highscores</h2>
+  <ol id="scoreList"></ol>
+</div>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const size = 6;
+const cellSize = canvas.width / size;
+let grid = [];
+let startTime = Date.now();
+let attempts = 0;
+let gameOver = false;
+
+function initGrid() {
+  grid = [];
+  for (let y = 0; y < size; y++) {
+    grid[y] = [];
+    for (let x = 0; x < size; x++) {
+      grid[y][x] = Math.random() < 0.5 ? 0 : 1;
+    }
+  }
+  drawGrid();
+}
+
+function drawGrid() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      ctx.fillStyle = grid[y][x] ? '#0f0' : '#333';
+      ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      ctx.strokeStyle = '#555';
+      ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+    }
+  }
+}
+
+canvas.addEventListener('click', (e) => {
+  if (gameOver) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / cellSize);
+  const y = Math.floor((e.clientY - rect.top) / cellSize);
+  grid[y][x] = grid[y][x] ? 0 : 1;
+  drawGrid();
+});
+
+function isSymmetric() {
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size / 2; x++) {
+      if (grid[y][x] !== grid[y][size - 1 - x]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function updateTimer() {
+  if (!gameOver) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    document.getElementById('timer').innerText = `Zeit: ${elapsed}s`;
+  }
+  requestAnimationFrame(updateTimer);
+}
+
+function calculateScore() {
+  const timeScore = Math.max(0, 1000 - (Date.now() - startTime) / 10);
+  const attemptScore = Math.max(0, 500 - attempts * 50);
+  return Math.floor(timeScore * 0.75 + attemptScore * 0.25);
+}
+
+function saveHighscore(name, score) {
+  let highscores = JSON.parse(localStorage.getItem('highscores')) || [];
+  highscores.push({ name, score });
+  highscores.sort((a, b) => b.score - a.score);
+  highscores = highscores.slice(0, 10);
+  localStorage.setItem('highscores', JSON.stringify(highscores));
+  displayHighscores();
+}
+
+function displayHighscores() {
+  const highscores = JSON.parse(localStorage.getItem('highscores')) || [];
+  const list = document.getElementById('scoreList');
+  list.innerHTML = '';
+  highscores.forEach(h => {
+    const li = document.createElement('li');
+    li.textContent = `${h.name}: ${h.score}`;
+    list.appendChild(li);
+  });
+}
+
+document.getElementById('checkBtn').addEventListener('click', () => {
+  if (gameOver) return;
+  attempts++;
+  if (isSymmetric()) {
+    gameOver = true;
+    const score = calculateScore();
+    const name = prompt(`Glückwunsch! Dein Score: ${score}\nBitte Namen eingeben:`);
+    if (name) saveHighscore(name, score);
+  } else {
+    alert('Nicht symmetrisch, versuch es nochmal!');
+  }
+});
+
+initGrid();
+updateTimer();
+displayHighscores();
+</script>
+</body>
+</html>
